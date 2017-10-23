@@ -1,0 +1,10 @@
+#!/usr/bin/zsh
+
+#JAVA_HOME=/opt/jdk1.8.0_162
+#JDK_CLASS="${JAVA_HOME}/jre/lib/charsets.jar:${JAVA_HOME}/jre/lib/deploy.jar:${JAVA_HOME}/jre/lib/ext/access-bridge-64.jar:${JAVA_HOME}/jre/lib/ext/cldrdata.jar:${JAVA_HOME}/jre/lib/ext/dnsns.jar:${JAVA_HOME}/jre/lib/ext/jaccess.jar:${JAVA_HOME}/jre/lib/ext/jfxrt.jar:${JAVA_HOME}/jre/lib/ext/localedata.jar:${JAVA_HOME}/jre/lib/ext/nashorn.jar:${JAVA_HOME}/jre/lib/ext/sunec.jar:${JAVA_HOME}/jre/lib/ext/sunjce_provider.jar:${JAVA_HOME}/jre/lib/ext/sunmscapi.jar:${JAVA_HOME}/jre/lib/ext/sunpkcs11.jar:${JAVA_HOME}/jre/lib/ext/zipfs.jar:${JAVA_HOME}/jre/lib/javaws.jar:${JAVA_HOME}/jre/lib/jce.jar:${JAVA_HOME}/jre/lib/jfxswt.jar:${JAVA_HOME}/jre/lib/jsse.jar:${JAVA_HOME}/jre/lib/management-agent.jar:${JAVA_HOME}/jre/lib/plugin.jar:${JAVA_HOME}/jre/lib/resources.jar:${JAVA_HOME}/jre/lib/rt.jar"
+
+REPO="/root/.gradle/caches/modules-2/files-2.1"
+KT_CLASS="${REPO}/org.jetbrains.kotlinx/kotlinx-coroutines-core/0.20-alpha-6/ea5d954a0e3b3c1aa61e3d01724f3ffbd68bf279/kotlinx-coroutines-core-0.20-alpha-6.jar:${REPO}/org.jetbrains.kotlin/kotlin-stdlib/1.1.51/e34fe80c9714240525f665113dd3749415515655/kotlin-stdlib-1.1.51.jar:${REPO}/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar"
+
+#java -Dfile.encoding=UTF-8 -classpath "${JDK_CLASS}:/root/kt_coro/build/classes/kotlin/main:${KT_CLASS}" hello.HelloworldKt
+java -Dfile.encoding=UTF-8 -classpath "/root/kt_coro/build/libs/kt_coro.jar:${KT_CLASS}" hello.HelloworldKt
