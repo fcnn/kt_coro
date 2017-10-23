@@ -20,11 +20,11 @@ fun thread_ver(count: Int): Int {
     }
 
   println(c.get())
-  return c.get() as Int
+  return c.get()
 }
 
 fun coro_ver(count: Int): Int {
-  val deferred = (1..1_000_000).map { n ->
+  val deferred = (1..count).map { n ->
     async (CommonPool) {
       n
     }
@@ -34,7 +34,7 @@ fun coro_ver(count: Int): Int {
     sum = deferred.sumBy { it.await() }
   }
   println("Sum: $sum")
-  return sum as Int
+  return sum
 }
 
 suspend fun workload(n: Int): Int {
