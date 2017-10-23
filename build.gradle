@@ -1,5 +1,7 @@
 buildscript {
-  ext.kotlin_version = '+'
+  ext {
+    kotlin_version = '+'
+  }
   repositories {
     mavenCentral()
   }
@@ -7,7 +9,6 @@ buildscript {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     classpath("org.jetbrains.kotlin:kotlin-allopen:${kotlin_version}")
   }
-
 }
 
 apply plugin: 'java'
@@ -42,7 +43,7 @@ repositories {
 dependencies {
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   compile "org.jetbrains.kotlinx:kotlinx-coroutines-core:+"
-  testCompile 'junit:junit:4.12'
+  testCompile 'junit:junit:+'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
 }
 
