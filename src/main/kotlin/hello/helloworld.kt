@@ -3,14 +3,6 @@ package hello
 import kotlinx.coroutines.experimental.*
 import java.util.concurrent.atomic.AtomicInteger
 
-fun getGreeting(): String {
-  val words = mutableListOf<String>()
-  words.add("Hello,")
-  words.add("world!")
-
-  return words.joinToString(separator = " ")
-}
-
 fun testCoro(count: Int): Int {
   val deferred = (1..count).map { n ->
     async (CommonPool) {
