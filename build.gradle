@@ -38,6 +38,7 @@ kotlin {
 repositories {
   jcenter()
   mavenCentral()
+  //maven { url "http://dl.bintray.com/kotlin/kotlin-eap-1.2" }
   maven { url "https://repo.eclipse.org/content/repositories/paho-snapshots" }
 }
 
@@ -53,5 +54,5 @@ dependencies {
 }
 
 task wrapper(type: Wrapper) {
-  gradleVersion = "4.3-rc-2"
+  gradleVersion = "4.3-rc-3"
 }

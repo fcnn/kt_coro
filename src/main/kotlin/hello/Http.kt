@@ -16,9 +16,10 @@ class Http {
 
     var name = "My Ng Client"
     @Throws(Exception::class)
-    fun get() {
+    fun get(url: String? = null) {
+        //client.protocols().removeAt(1)
         val request = Request.Builder()
-                .url("http://publicobject.com/helloworld.txt")
+                .url(url  ?: "http://publicobject.com/helloworld.txt")
                 .tag(this)
                 .build()
 
@@ -49,9 +50,12 @@ class Http {
         })
 
     }
-    fun post(body: String) {
+    fun post(url: String, json: String) {
+        val JSON = MediaType.parse("application/json; charset=utf-8")
+        val body = RequestBody.create(JSON, json)
         val request = Request.Builder()
-                .url("http://publicobject.com/helloworld.txt")
+                .url(url)
+                .post(body)
                 .tag(this)
                 .build()
 
@@ -88,7 +92,8 @@ class Http {
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            Http().get()
+            Http().get("http://gw.codein.net/protocol.html")
+            Http().post("https://gw.codein.net/echo", "{\"hello world\"}")
         }
     }
 }
