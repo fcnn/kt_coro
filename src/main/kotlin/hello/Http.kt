@@ -103,7 +103,9 @@ class Http {
 
     }
 
-    fun<Req, Rep> post(name: String, req: Req, rep: Rep) {
+    fun post(name: String, req: com.google.protobuf.Message, rep: com.google.protobuf.Message.Builder) {
+        var ba = ByteArray(10)
+        rep.mergeFrom(ba)
     }
 
     companion object {
@@ -114,7 +116,9 @@ class Http {
             var http = Http();
             //http.get("http://gw.codein.net/protocol.html")
             //http.post("https://gw.codein.net/echo", "{\"hello world\"}")
-            http.post("test", 0, Reply())
+            var builder = CodeInProto.LoginRequest.newBuilder()
+            var req = builder.build()
+
 
         }
     }
