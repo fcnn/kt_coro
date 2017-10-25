@@ -1,5 +1,5 @@
 package hello
-
+import com.google.rpc.CodeProto
 import java.io.IOException
 import okhttp3.Call
 import okhttp3.Callback
@@ -11,10 +11,25 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import okhttp3.MediaType
 
+import protofiles.protojava.CommonProtos as CommonProto
+import protofiles.protojava.MessagingProto
+import protofiles.protojava.UserProto
+import protofiles.protojava.CodeInProtos as CodeInProto
+
+class Request {
+    var name = "Request"
+}
+
+class Reply {
+    var name = "Reply"
+}
+
 class Http {
     private val client = OkHttpClient()
 
     var name = "My Ng Client"
+    var gwUrl = "http://gw.codein.net/api/"
+
     @Throws(Exception::class)
     fun get(url: String? = null) {
         //client.protocols().removeAt(1)
@@ -60,7 +75,8 @@ class Http {
                 .build()
 
         val call = client.newCall(request)
-        call.enqueue(object : Callback {
+        //call.enqueue(object : Callback {
+        call.enqueue(object: Callback {
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
             }
@@ -87,13 +103,19 @@ class Http {
 
     }
 
+    fun<Req, Rep> post(name: String, req: Req, rep: Rep) {
+    }
+
     companion object {
 
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            Http().get("http://gw.codein.net/protocol.html")
-            Http().post("https://gw.codein.net/echo", "{\"hello world\"}")
+            var http = Http();
+            //http.get("http://gw.codein.net/protocol.html")
+            //http.post("https://gw.codein.net/echo", "{\"hello world\"}")
+            http.post("test", 0, Reply())
+
         }
     }
 }
