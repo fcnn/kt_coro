@@ -33,10 +33,9 @@ class Http {
 
     @Throws(Exception::class)
     fun get(url: String? = null) {
-        //client.protocols().removeAt(1)
         val request = Request.Builder()
                 .url(url  ?: "http://publicobject.com/helloworld.txt")
-                .tag(this)
+                //.tag(this)
                 .build()
 
         val call = client.newCall(request)
@@ -47,8 +46,8 @@ class Http {
 
             @Throws(IOException::class)
             override fun onResponse(call: Call, response: Response) {
-                val http = call.request().tag() as Http
-                println("tag: ${http.name}")
+                //val http = call.request().tag() as Http
+                //println("tag: ${http.name}")
                 response.body()!!.use { responseBody ->
                     if (!response.isSuccessful) throw IOException("Unexpected code " + response)
 
