@@ -35,6 +35,7 @@ fun main(args: Array<String>) {
   async (CommonPool) {
     workload(n = 10)
   }
+  Http.main(args)
 
   println("Stop")
 }
