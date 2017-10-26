@@ -22,9 +22,7 @@ suspend fun workload(n: Int): Int {
   return n
 }
 
-fun main(args: Array<String>) {
-  println("Start")
-
+fun runCoroTest() {
   testCoro(count = 1_000_000)
 
   runBlocking {
@@ -35,7 +33,22 @@ fun main(args: Array<String>) {
   async (CommonPool) {
     workload(n = 10)
   }
-  Http.main(args)
+}
+
+fun runHttpTest() {
+  var http = Http();
+  //Http().get("http://gw.codein.net/protocol.html")
+  http.post("https://gw.codein.net/echo", "{\"hello world\"}")
+  //http.post("test", 0, Reply())
+  //http.get("http://gw.codein.net/protocol.html")
+  //http.post("https://gw.codein.net/echo", "{\"hello world\"}")
+
+}
+
+fun main(args: Array<String>) {
+  println("Start")
+
+  runHttpTest()
 
   println("Stop")
 }

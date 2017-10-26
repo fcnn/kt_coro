@@ -113,16 +113,15 @@ class Http {
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            //Http().get("http://www.qq.com")
-            //var http = Http();
+            var http = Http();
             //Http().get("http://gw.codein.net/protocol.html")
-            //http.post("http://gw.codein.net/echo", "{\"hello world\"}")
-            Http().get()
+            http.post("https://gw.codein.net/echo", "{\"hello world\"}")
             //http.post("test", 0, Reply())
             //http.get("http://gw.codein.net/protocol.html")
             //http.post("https://gw.codein.net/echo", "{\"hello world\"}")
             var builder = CodeInProto.LoginRequest.newBuilder()
             var req = builder.build()
+            http.post("hello", req, builder)
         }
     }
 }
