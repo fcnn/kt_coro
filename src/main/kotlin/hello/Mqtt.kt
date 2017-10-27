@@ -1,5 +1,7 @@
 package hello
 
+import java.net.*
+import java.io.*
 import java.util.*
 import kotlin.experimental.and
 import kotlin.concurrent.thread
@@ -14,18 +16,19 @@ import protofiles.protojava.UserProto
 import protofiles.protojava.CodeInProtos
 import protofiles.protojava.MessagingProto.LiveMessageType
 import protofiles.protojava.MessagingProto.InstantMessageType
+import java.net.InetAddress
+
+
 
 //import org.eclipse.paho.mqttv5.client.*
 //import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 
 interface MqttListener {
     fun onGameContactInfo(msg: MessagingProto.GameContactInfo, uid: Long, mid: Long) {}
+    fun onImAddContact(msg: MessagingProto.ImAddContact, uid: Long, mid: Long) {}
 }
 
-class Mqtt : MqttCallbackExtended {
-    private var listener = object: MqttListener{
-        // null
-    }
+class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttCallbackExtended {
 
     private var brokerUrl: String? = null
     private var client: MqttClient? = null
@@ -62,13 +65,18 @@ class Mqtt : MqttCallbackExtended {
             return
         }
         try {
-            var uid = 0L
+            var msgUid = 0L
+            var channel = 0
             when {
                 topic.startsWith("codein/live/") -> {
                     topic.substring(12).toLong()
                 }
-                topic.startsWith("im/user/") -> return
-                topic.startsWith("im/group/") -> return
+                topic.startsWith("im/user/") -> {
+                    channel = 1
+                }
+                topic.startsWith("im/group/") -> {
+                    channel = 1
+                };
                 else -> return
             }
 
@@ -84,21 +92,26 @@ class Mqtt : MqttCallbackExtended {
                     ((arr[8] and 0xff.toByte()).toLong() shl 8) or
                     (arr[9] and 0xff.toByte()).toLong()
 
-            //when (InstantMessageType.forNumber(type)) {
-            //    InstantMessageType.IM_CHAT_MESSAGE -> {
-            //        var req = MessagingProto.ImChatMsg.parseFrom(arr.sliceArray(10 until arr.size));
-            //        val str = req.toString()
-            //        onImChatMsg(req, topic, id);
-            //    }
-            //    else -> {
-            //    }
-            //}
-            when (LiveMessageType.forNumber(type)) {
-                LiveMessageType.LMT_GAME_CONTACT_INFO -> {
-                    var msg = MessagingProto.GameContactInfo.parseFrom(arr.sliceArray(10 until arr.size));
-                    listener.onGameContactInfo(msg, uid, id)
+            when(channel) {
+                0 -> when (LiveMessageType.forNumber(type)) {
+                    LiveMessageType.LMT_GAME_CONTACT_INFO -> {
+                        var mqttMsg = MessagingProto.GameContactInfo.parseFrom(arr.sliceArray(10 until arr.size));
+                        listener.onGameContactInfo(mqttMsg, msgUid, id)
+                    }
+                    else -> {
+                    }
+                }
+                1 -> when(InstantMessageType.forNumber(type)) {
+                    InstantMessageType.IM_ADD_CONTACT -> {
+                        var mqttMsg = MessagingProto.ImAddContact.parseFrom(arr.sliceArray(10 until arr.size))
+                        listener.onImAddContact(mqttMsg, msgUid, id)
+                    }
+                    else -> {
+
+                    }
                 }
                 else -> {
+
                 }
             }
         } catch (e: com.google.protobuf.InvalidProtocolBufferException) {
@@ -112,7 +125,6 @@ class Mqtt : MqttCallbackExtended {
     override fun deliveryComplete(token: IMqttDeliveryToken?) {
         //LOGGER.info("message delivery complete. token $token")
     }
-
 
     fun connect(brokerUrl: String, clientId: String, cleanSession: Boolean, userName: String?, password: String?): Boolean {
         this.brokerUrl = brokerUrl
@@ -150,6 +162,49 @@ class Mqtt : MqttCallbackExtended {
         client?.publish(topic, msg)
     }
 
+    fun sendLiveMsg(msg: com.google.protobuf.Message, type: Int) {
+        var body = msg.toByteArray()
+        val payload = ByteArray(size = body.size + 10)
+        payload[0] = ((type shr 8) and 0xff).toByte()
+        payload[1] = (type and 0xff).toByte()
+        payload[2] = (body.size shr 56).toByte()
+        payload[3] = (body.size shr 48).toByte()
+        payload[4] = (body.size shr 40).toByte()
+        payload[5] = (body.size shr 32).toByte()
+        payload[6] = (body.size shr 24).toByte()
+        payload[7] = (body.size shr 16).toByte()
+        payload[8] = (body.size shr 8).toByte()
+        payload[9] = body.size.toByte()
+
+        (0 until body.size).forEach {
+            payload[it + 10] = body[it]
+        }
+
+        return publish("codein/live", 1, payload)
+    }
+
+    fun sendImMsg(msg: com.google.protobuf.Message, type: Int) {
+        var body = msg.toByteArray()
+        val payload = ByteArray(size = body.size + 10)
+        payload[0] = ((type shr 8) and 0xff).toByte()
+        payload[1] = (type and 0xff).toByte()
+        payload[2] = (body.size shr 56).toByte()
+        payload[3] = (body.size shr 48).toByte()
+        payload[4] = (body.size shr 40).toByte()
+        payload[5] = (body.size shr 32).toByte()
+        payload[6] = (body.size shr 24).toByte()
+        payload[7] = (body.size shr 16).toByte()
+        payload[8] = (body.size shr 8).toByte()
+        payload[9] = body.size.toByte()
+
+
+        (0 until body.size).forEach {
+            payload[it + 10] = body[it]
+        }
+
+        return publish("im/sys", 1, payload)
+    }
+
     fun subscribe(topic: String, qos: Int) {
         println("subscribing to topic $topic qos $qos")
         client?.subscribe(topic, qos)
@@ -157,14 +212,21 @@ class Mqtt : MqttCallbackExtended {
 
     var qos_ = 1
     var topics_ = arrayOf("im/sys/#")
-    var broker_ = "tcp://localhost:1883"
-    var clientId_ = "kt_let_" + (Math.random() * 1e12).toLong().toString(16)
+    var broker_ = "tcp://gw.codein.net:1883"
+    var clientId_ = ""
     var userName_ =  "codein_os_kt"
     var password_ = "os.cOdein.tv"
 
     init {
-        if (clientId_.length < 1)
-            clientId_ = "kt_let_" + (Math.random() * 1e8).toLong().toString()
+        if (clientId_.length < 1) {
+            try {
+                val addr = InetAddress.getLocalHost()
+                val hostname = addr.hostName
+                clientId_ = hostname + "_" + uid.toString()
+            } catch (e: UnknownHostException) {
+                clientId_ = "coro_" + (Math.random() * 1e12).toLong().toString(16)
+            }
+        }
     }
 
     fun start() {
@@ -181,46 +243,21 @@ class Mqtt : MqttCallbackExtended {
         }
     }
 
+    fun stop() {
+        client?.disconnect()
+    }
+
     companion object {
-        private fun testMqtt(testId: Int) {
-            val req = CodeInProtos.GetMwRequest.newBuilder()
-            req.gameId = 0
-            val clinfo = req.clientInfoBuilder
-            clinfo.uid = 2017009L
-            clinfo.token = "kt_coro_http"
-            clinfo.deviceId = "kt_coro_dev_000"
-            val reply = CodeInProtos.GetMwReply.newBuilder()
-            val start = System.currentTimeMillis()
-            Http().gwCall("GetMw", req.build(), reply, object: GwCallback {
-                override fun onReply(reply: Message) {
-                    if (reply is CodeInProtos.GetMwReply) {
-                        val timeCost = System.currentTimeMillis() - start
-                        (0 until reply.listCount)
-                                .map { reply.getList(it) }
-                                .forEach { println("id: ${it.id} ${it.words}") }
-                        println("test-$testId time cost: ${timeCost}ms latency: ${reply.latency}us, time: ${reply.timeUs}us")
-                    }
-
-                }
-
-                override fun onError() {
-                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
-
-            })
-            val topic = "codein/live/a"
-            try {
-                val uid = topic.substring(12).toLong()
-                println("uid = $uid")
-            } catch(e: Exception) {
-                e.printStackTrace()
-            }
+        private fun testMqtt(uid: Long) {
+            var mqtt = Mqtt(uid, object: MqttListener{})
+            mqtt.start()
         }
 
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            (0 until 1).forEach {
+            //(1230000 until 1231200L).forEach {
+            (1230001 .. 1230002L).forEach {
                 testMqtt(it)
             }
         }

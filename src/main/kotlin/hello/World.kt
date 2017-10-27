@@ -36,19 +36,32 @@ fun runCoroTest() {
 }
 
 fun runHttpTest() {
-  var http = Http();
+  var http = Http()
   //Http().get("http://gw.codein.net/protocol.html")
   http.post("https://gw.codein.net/echo", "{\"hello world\"}")
   //http.post("test", 0, Reply())
   //http.get("http://gw.codein.net/protocol.html")
   //http.post("https://gw.codein.net/echo", "{\"hello world\"}")
+}
 
+
+fun runRoboTest() {
+  var robotList = List<Robot>( 4, {
+    index -> Robot(201800000L + index)
+  })
+
+  robotList.map { robot ->
+    robot.run()
+  }
+  robotList.map { robot ->
+    robot.stop()
+  }
 }
 
 fun main(args: Array<String>) {
   println("Start")
 
-  runHttpTest()
+  runRoboTest()
 
   println("Stop")
 }
