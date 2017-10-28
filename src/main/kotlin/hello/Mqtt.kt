@@ -18,14 +18,13 @@ import protofiles.protojava.MessagingProto.LiveMessageType
 import protofiles.protojava.MessagingProto.InstantMessageType
 import java.net.InetAddress
 
-
-
 //import org.eclipse.paho.mqttv5.client.*
 //import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 
 interface MqttListener {
     fun onGameContactInfo(msg: MessagingProto.GameContactInfo, uid: Long, mid: Long) {}
     fun onImAddContact(msg: MessagingProto.ImAddContact, uid: Long, mid: Long) {}
+    fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, uid: Long, mid: Long) {}
 }
 
 class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttCallbackExtended {
@@ -69,7 +68,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
             var channel = 0
             when {
                 topic.startsWith("codein/live/") -> {
-                    topic.substring(12).toLong()
+                    msgUid = topic.substring(12).toLong()
                 }
                 topic.startsWith("im/user/") -> {
                     channel = 1
@@ -83,7 +82,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
             val arr = msg.payload as ByteArray
             val type = (arr[0] and 0xff.toByte()).toInt() shl 8 or
                     (arr[1] and 0xff.toByte()).toInt()
-            val id = (arr[0] and 0xff.toByte()).toLong() shl 56 or
+            val msgId = (arr[0] and 0xff.toByte()).toLong() shl 56 or
                     ((arr[3] and 0xff.toByte()).toLong() shl 48) or
                     ((arr[4] and 0xff.toByte()).toLong() shl 40) or
                     ((arr[5] and 0xff.toByte()).toLong() shl 32) or
@@ -96,7 +95,11 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
                 0 -> when (LiveMessageType.forNumber(type)) {
                     LiveMessageType.LMT_GAME_CONTACT_INFO -> {
                         var mqttMsg = MessagingProto.GameContactInfo.parseFrom(arr.sliceArray(10 until arr.size));
-                        listener.onGameContactInfo(mqttMsg, msgUid, id)
+                        listener.onGameContactInfo(mqttMsg, msgUid, msgId)
+                    }
+                    LiveMessageType.LMT_NEARBY_USER_UPDATE -> {
+                        var mqttMsg = MessagingProto.NearbyUserUpdate.parseFrom(arr.sliceArray(10 until arr.size))
+                        listener.onNearbyUserUpdate(mqttMsg, msgUid, msgId)
                     }
                     else -> {
                     }
@@ -104,7 +107,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
                 1 -> when(InstantMessageType.forNumber(type)) {
                     InstantMessageType.IM_ADD_CONTACT -> {
                         var mqttMsg = MessagingProto.ImAddContact.parseFrom(arr.sliceArray(10 until arr.size))
-                        listener.onImAddContact(mqttMsg, msgUid, id)
+                        listener.onImAddContact(mqttMsg, msgUid, msgId)
                     }
                     else -> {
 
@@ -153,28 +156,28 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         return ok;
     }
 
-    fun publish(topic: String, qos: Int, payload: ByteArray){
+    private fun publish(topic: String, qos: Int, payload: ByteArray){
         val time = Timestamp(System.currentTimeMillis())
-        println("topic: $topic qos: $qos payload: ${payload.toString()}")
+        println("topic: $topic qos: $qos payload: $payload")
         val msg = MqttMessage()
         msg.payload = payload
         msg.qos = qos
         client?.publish(topic, msg)
     }
 
-    fun sendLiveMsg(msg: com.google.protobuf.Message, type: Int) {
+    fun sendLiveMsg(msg: com.google.protobuf.Message, type: Int, id: Long = 0) {
         var body = msg.toByteArray()
         val payload = ByteArray(size = body.size + 10)
         payload[0] = ((type shr 8) and 0xff).toByte()
         payload[1] = (type and 0xff).toByte()
-        payload[2] = (body.size shr 56).toByte()
-        payload[3] = (body.size shr 48).toByte()
-        payload[4] = (body.size shr 40).toByte()
-        payload[5] = (body.size shr 32).toByte()
-        payload[6] = (body.size shr 24).toByte()
-        payload[7] = (body.size shr 16).toByte()
-        payload[8] = (body.size shr 8).toByte()
-        payload[9] = body.size.toByte()
+        payload[2] = (id shr 56).toByte()
+        payload[3] = (id shr 48).toByte()
+        payload[4] = (id shr 40).toByte()
+        payload[5] = (id shr 32).toByte()
+        payload[6] = (id shr 24).toByte()
+        payload[7] = (id shr 16).toByte()
+        payload[8] = (id shr 8).toByte()
+        payload[9] = id.toByte()
 
         (0 until body.size).forEach {
             payload[it + 10] = body[it]
@@ -183,20 +186,19 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         return publish("codein/live", 1, payload)
     }
 
-    fun sendImMsg(msg: com.google.protobuf.Message, type: Int) {
+    fun sendImMsg(msg: com.google.protobuf.Message, type: Int, id: Long = 0) {
         var body = msg.toByteArray()
         val payload = ByteArray(size = body.size + 10)
         payload[0] = ((type shr 8) and 0xff).toByte()
         payload[1] = (type and 0xff).toByte()
-        payload[2] = (body.size shr 56).toByte()
-        payload[3] = (body.size shr 48).toByte()
-        payload[4] = (body.size shr 40).toByte()
-        payload[5] = (body.size shr 32).toByte()
-        payload[6] = (body.size shr 24).toByte()
-        payload[7] = (body.size shr 16).toByte()
-        payload[8] = (body.size shr 8).toByte()
-        payload[9] = body.size.toByte()
-
+        payload[2] = (id shr 56).toByte()
+        payload[3] = (id shr 48).toByte()
+        payload[4] = (id shr 40).toByte()
+        payload[5] = (id shr 32).toByte()
+        payload[6] = (id shr 24).toByte()
+        payload[7] = (id shr 16).toByte()
+        payload[8] = (id shr 8).toByte()
+        payload[9] = id.toByte()
 
         (0 until body.size).forEach {
             payload[it + 10] = body[it]
@@ -211,22 +213,22 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
     }
 
     var qos_ = 1
-    var topics_ = arrayOf("im/sys/#")
-    var broker_ = "tcp://gw.codein.net:1883"
-    var clientId_ = ""
+    var clientId_: String
+    var topics_: Array<String>
     var userName_ =  "codein_os_kt"
     var password_ = "os.cOdein.tv"
+    var broker_ = "tcp://gw.codein.net:1883"
 
     init {
-        if (clientId_.length < 1) {
-            try {
-                val addr = InetAddress.getLocalHost()
-                val hostname = addr.hostName
-                clientId_ = hostname + "_" + uid.toString()
-            } catch (e: UnknownHostException) {
-                clientId_ = "coro_" + (Math.random() * 1e12).toLong().toString(16)
-            }
+        clientId_ = try {
+            val addr = InetAddress.getLocalHost()
+            val hostname = addr.hostName
+            hostname + "_" + uid.toString()
+        } catch (e: UnknownHostException) {
+            "co_" + (Math.random() * 1e12).toLong().toString(16)
         }
+
+        topics_ = arrayOf("codein/live/$uid", "im/user/$uid")
     }
 
     fun start() {

@@ -45,23 +45,18 @@ fun runHttpTest() {
 }
 
 
-fun runRoboTest() {
-  var robotList = List<Robot>( 4, {
-    index -> Robot(201800000L + index)
+fun run(size: Int) {
+  var coList = MutableList(size, {
+      index -> async { Robot(10000001L + index).run() }
   })
-
-  robotList.map { robot ->
-    robot.run()
-  }
-  robotList.map { robot ->
-    robot.stop()
+  runBlocking {
+    coList.map { co ->
+      val robot = co.await()
+      println("robot ${robot.uid} exited with status ${robot.status} ...")
+    }
   }
 }
 
 fun main(args: Array<String>) {
-  println("Start")
-
-  runRoboTest()
-
-  println("Stop")
+  run(100)
 }
