@@ -45,7 +45,7 @@ repositories {
 }
 
 dependencies {
-  compile name: 'proto'
+  compile name: "proto"
   compile "joda-time:joda-time:+"
   compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   compile "org.jetbrains.kotlinx:kotlinx-coroutines-core:+"
