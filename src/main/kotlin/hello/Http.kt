@@ -25,9 +25,9 @@ class Http {
     var gwUrl = "http://gw.codein.net/api/"
 
     @Throws(Exception::class)
-    fun get(url: String? = null) {
+    fun get(url: String = "http://publicobject.com/helloworld.txt") {
         val request = Request.Builder()
-                .url(url  ?: "http://publicobject.com/helloworld.txt")
+                .url(url)
                 //.tag(this)
                 .build()
 

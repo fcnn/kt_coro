@@ -4,8 +4,8 @@ import kotlinx.coroutines.experimental.delay
 import protofiles.protojava.MessagingProto
 
 class Robot constructor(var uid: Long): MqttListener {
-    override fun onGameContactInfo(msg: MessagingProto.GameContactInfo, msgUid: Long, mid: Long) {}
-    override fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, msgUid: Long, mid: Long) {
+    override fun onGameContactInfo(msg: MessagingProto.GameContactInfo, uid: Long, mid: Long) {}
+    override fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, uid: Long, mid: Long) {
         val str = msg.toString()
         println("nearby $uid -> $str")
     }
