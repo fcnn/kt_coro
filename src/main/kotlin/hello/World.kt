@@ -47,7 +47,7 @@ fun runHttpTest() {
 
 fun run(size: Int) {
   var coList = MutableList(size, {
-      index -> async { Robot(10000001L + index).run() }
+      index -> async { Robot(8000000001L + index).run() }
   })
   runBlocking {
     coList.map { co ->
@@ -58,5 +58,6 @@ fun run(size: Int) {
 }
 
 fun main(args: Array<String>) {
-  run(100)
+  //Mqtt.testPb()
+  run(6000)
 }

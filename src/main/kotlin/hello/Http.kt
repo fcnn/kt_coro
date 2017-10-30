@@ -21,7 +21,7 @@ interface GwCallback {
 class Http {
     private val client = OkHttpClient()
 
-    var name = "My Ng Client"
+    var name = "My Ng ClientTest"
     var gwUrl = "http://gw.codein.net/api/"
 
     @Throws(Exception::class)

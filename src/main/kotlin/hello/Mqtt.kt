@@ -22,18 +22,16 @@ import java.net.InetAddress
 //import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 
 interface MqttListener {
-    fun onGameContactInfo(msg: MessagingProto.GameContactInfo, uid: Long, mid: Long) {}
-    fun onImAddContact(msg: MessagingProto.ImAddContact, uid: Long, mid: Long) {}
-    fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, uid: Long, mid: Long) {}
+    fun onGameContactInfo(msg: MessagingProto.GameContactInfo, msgUid: Long, mid: Long) {}
+    fun onImAddContact(msg: MessagingProto.ImAddContact, msgUid: Long, mid: Long) {}
+    fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, msgUid: Long, mid: Long) {}
 }
 
 class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttCallbackExtended {
-
     private var brokerUrl: String? = null
     private var client: MqttClient? = null
 
     override fun connectComplete(reconnect: Boolean, serverURI: String) {
-        val time = Timestamp(System.currentTimeMillis())
         for (topic in topics_) {
             subscribe(topic, qos_)
         }
@@ -43,7 +41,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         val time = Timestamp(System.currentTimeMillis())
         Thread.sleep(1000L)
         try {
-            connect(broker_, clientId_, true, userName_, password_)
+            connect(broker_, clientId_, true, uid.toString(), password_)
             for (topic in topics_) {
                 subscribe(topic, qos_)
             }
@@ -129,7 +127,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         //LOGGER.info("message delivery complete. token $token")
     }
 
-    fun connect(brokerUrl: String, clientId: String, cleanSession: Boolean, userName: String?, password: String?): Boolean {
+    private fun connect(brokerUrl: String, clientId: String, cleanSession: Boolean, userName: String?, password: String?): Boolean {
         this.brokerUrl = brokerUrl
         val persistence = MemoryPersistence()
         var ok = false
@@ -143,10 +141,12 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
                     connOpt.password = password.toCharArray()
             }
 
-
             client = MqttClient(brokerUrl, clientId, persistence)
-            client?.setCallback(this)
-            client?.connect(connOpt)
+            if (client == null)
+                return false
+
+            client!!.setCallback(this)
+            client!!.connect(connOpt)
             ok = true
         } catch (e: MqttException) {
             e.printStackTrace()
@@ -156,9 +156,13 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         return ok;
     }
 
+    fun connected(): Boolean {
+        return if (client != null) client!!.isConnected else false
+    }
+
     private fun publish(topic: String, qos: Int, payload: ByteArray){
-        val time = Timestamp(System.currentTimeMillis())
-        println("topic: $topic qos: $qos payload: $payload")
+        //val time = Timestamp(System.currentTimeMillis())
+        //println("topic: $topic qos: $qos payload: $payload")
         val msg = MqttMessage()
         msg.payload = payload
         msg.qos = qos
@@ -207,16 +211,15 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         return publish("im/sys", 1, payload)
     }
 
-    fun subscribe(topic: String, qos: Int) {
-        println("subscribing to topic $topic qos $qos")
+    private fun subscribe(topic: String, qos: Int) {
+        //println("subscribing to topic $topic qos $qos")
         client?.subscribe(topic, qos)
     }
 
     var qos_ = 1
     var clientId_: String
     var topics_: Array<String>
-    var userName_ =  "codein_os_kt"
-    var password_ = "os.cOdein.tv"
+    var password_ = "password"
     var broker_ = "tcp://gw.codein.net:1883"
 
     init {
@@ -231,37 +234,61 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         topics_ = arrayOf("codein/live/$uid", "im/user/$uid")
     }
 
-    fun start() {
-        try {
-            if (connect(broker_, clientId_, true, userName_, password_)) {
+    fun start(): Boolean {
+        (0..2).map { i ->
+            try {
+                if (connect(broker_, clientId_, true, uid.toString(), password_)) {
+                    return true
+                }
+            } catch (e: MqttException) {
+                println("reason " + e.reasonCode)
+                println("msg " + e.message)
+                println("loc " + e.localizedMessage)
+                println("cause " + e.cause)
+                println("excep " + e)
+                e.printStackTrace()
             }
-        } catch (e: MqttException) {
-            println("reason " + e.reasonCode)
-            println("msg " + e.message)
-            println("loc " + e.localizedMessage)
-            println("cause " + e.cause)
-            println("excep " + e)
-            e.printStackTrace()
         }
+
+        return false
     }
 
     fun stop() {
-        client?.disconnect()
+        val b = client?.isConnected
+        if (b!= null && b) {
+            client?.disconnect()
+        }
     }
 
     companion object {
         private fun testMqtt(uid: Long) {
-            var mqtt = Mqtt(uid, object: MqttListener{})
-            mqtt.start()
+            //(1230000 until 1231200L).forEach {
+            (1230001 .. 1230002L).forEach {
+                var mqtt = Mqtt(uid, object : MqttListener {})
+                mqtt.start()
+            }
+        }
+        fun testPb() {
+            var b = MessagingProto.GameLiveStateInfo.newBuilder()
+            b.state = MessagingProto.GameLiveState.game_state_fail
+            b.gameId = 1234567890123456789L
+            val c = b.clientInfoBuilder
+            c.uid = 123456789099999L
+            c.token = "hellosdfsfsfsfsfsdsfsdfsfsfd"
+            c.gpsBuilder.latitude = 123.12345678
+            c.gpsBuilder.longitude = 124.98766537
+            b.timeMs = System.currentTimeMillis()
+            val msg = b.build()
+            val ba = msg.toByteArray()
+            println("size ${ba.size}")
+            val str = msg.toString()
+            println(str)
         }
 
         @Throws(Exception::class)
         @JvmStatic
         fun main(args: Array<String>) {
-            //(1230000 until 1231200L).forEach {
-            (1230001 .. 1230002L).forEach {
-                testMqtt(it)
-            }
+            testPb()
         }
     }
 }
