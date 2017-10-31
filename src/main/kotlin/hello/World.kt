@@ -59,5 +59,5 @@ fun run(size: Int) {
 
 fun main(args: Array<String>) {
   //Mqtt.testPb()
-  run(6000)
+  run(1)
 }

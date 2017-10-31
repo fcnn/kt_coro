@@ -31,8 +31,40 @@ class Robot constructor(var uid: Long): MqttListener {
         Companion.gps(this)
         println("$uid -> ($lng $lat)")
     }
+    private fun getInitParam(){
+        var req = CodeInProtos.GetInitParamsRequest.newBuilder()
+        req.clientInfoBuilder.uid = uid
+        req.clientInfoBuilder.type = CommonProtos.ClientType.IOS
+        req.clientInfoBuilder.oem = "Kotlin"
+        req.clientInfoBuilder.version = 1000000300051L
+        req.clientInfoBuilder.deviceId = mqtt.clientId_
+        req.clientInfoBuilder.gpsBuilder.latitude = lat
+        req.clientInfoBuilder.gpsBuilder.longitude = lng
+        val reply = CodeInProtos.GetInitParamsReply.newBuilder()
+        val start = System.currentTimeMillis()
+        Http().gwCall("GetInitParams", req.build(), reply, object: GwCallback {
+            override fun onReply(reply: Message) {
+                if (reply is CodeInProtos.GetInitParamsReply) {
+                    val timeCost = System.currentTimeMillis() - start
+                    if (reply.hasErrInfo() && reply.errInfo.err != CommonProtos.ErrorCode.OK) {
+                        println("$uid GetInitParam error: ${reply.errInfo.msg}")
+                        status = -1
+                    } else {
+                        val str = reply.toString()
+                        println("[$uid] time ${timeCost}ms reply -> $str")
+                    }
+                }
+            }
 
-    private suspend fun login(){
+            override fun onError() {
+                val timeCost = System.currentTimeMillis() - start
+                println("[$uid] login error. time ${timeCost}ms")
+            }
+
+        })
+    }
+
+    private suspend fun login() {
         var req = CodeInProtos.LoginRequest.newBuilder()
         req.clientInfoBuilder.uid = uid
         req.passwd = "%03d".format(uid%1000)
@@ -59,7 +91,6 @@ class Robot constructor(var uid: Long): MqttListener {
                     }
                     println("[$uid] login time ${timeCost}ms")
                 }
-
             }
 
             override fun onError() {
@@ -86,6 +117,7 @@ class Robot constructor(var uid: Long): MqttListener {
     }
 
     suspend fun init(): Int {
+        getInitParam()
         login()
         if (status != 0) {
             return -1
