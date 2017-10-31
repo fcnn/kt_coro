@@ -11,7 +11,7 @@ class Robot constructor(var uid: Long): MqttListener {
     override fun onGameContactInfo(msg: MessagingProto.GameContactInfo, msgUid: Long, mid: Long) {}
     override fun onNearbyUserUpdate(msg: MessagingProto.NearbyUserUpdate, msgUid: Long, mid: Long) {
         //val str = msg.toString()
-        println("$uid -> get ${msg.userListCount} nearby users ...")
+        //println("$uid -> get ${msg.userListCount} nearby users ...")
     }
     val lngNW: Double = 113.910938
     val latNW: Double = 22.520323
@@ -26,16 +26,18 @@ class Robot constructor(var uid: Long): MqttListener {
 
     var status = 0
     var token = ""
+    var gameId = 0L
 
     init {
         Companion.gps(this)
-        println("$uid -> ($lng $lat)")
+        //println("$uid -> ($lng $lat)")
     }
     private fun getInitParam(){
         var req = CodeInProtos.GetInitParamsRequest.newBuilder()
         req.clientInfoBuilder.uid = uid
         req.clientInfoBuilder.type = CommonProtos.ClientType.IOS
         req.clientInfoBuilder.oem = "Kotlin"
+        req.clientInfoBuilder.osVersion = "kt-${uid%1000}"
         req.clientInfoBuilder.version = 1000000300051L
         req.clientInfoBuilder.deviceId = mqtt.clientId_
         req.clientInfoBuilder.gpsBuilder.latitude = lat
@@ -45,13 +47,13 @@ class Robot constructor(var uid: Long): MqttListener {
         Http().gwCall("GetInitParams", req.build(), reply, object: GwCallback {
             override fun onReply(reply: Message) {
                 if (reply is CodeInProtos.GetInitParamsReply) {
-                    val timeCost = System.currentTimeMillis() - start
                     if (reply.hasErrInfo() && reply.errInfo.err != CommonProtos.ErrorCode.OK) {
                         println("$uid GetInitParam error: ${reply.errInfo.msg}")
                         status = -1
                     } else {
-                        val str = reply.toString()
-                        println("[$uid] time ${timeCost}ms reply -> $str")
+                        //val timeCost = System.currentTimeMillis() - start
+                        //val str = reply.toString()
+                        //println("[$uid] time ${timeCost}ms reply -> $str")
                     }
                 }
             }
@@ -68,10 +70,13 @@ class Robot constructor(var uid: Long): MqttListener {
         var req = CodeInProtos.LoginRequest.newBuilder()
         req.clientInfoBuilder.uid = uid
         req.passwd = "%03d".format(uid%1000)
-        req.clientInfoBuilder.version = 1000000300051L
-        req.clientInfoBuilder.deviceId = mqtt.clientId_
-        req.clientInfoBuilder.gpsBuilder.latitude = lat
-        req.clientInfoBuilder.gpsBuilder.longitude = lng
+        val c = req.clientInfoBuilder
+        c.version = 1000000300051L
+        c.oem = "Kotlin"
+        c.osVersion = "KT-${uid%1000}"
+        c.deviceId = mqtt.clientId_
+        c.gpsBuilder.latitude = lat
+        c.gpsBuilder.longitude = lng
         val reply = CodeInProtos.LoginReply.newBuilder()
         val start = System.currentTimeMillis()
         Http().gwCall("Login", req.build(), reply, object: GwCallback {
@@ -152,17 +157,21 @@ class Robot constructor(var uid: Long): MqttListener {
         for (i in 1..180) {
             val time = System.currentTimeMillis()
             if (stateTime + 3000 <= time) {
+                gps(this)
                 stateTime = time
-                sendLiveState()
+                sendLiveState(MessagingProto.GameLiveState.game_state_ready)
             }
+
             if (nearbyTime + 5000 <= time) {
                 nearbyTime = time
-                //updateNearby()
+                updateNearby()
             }
+
             if ((i%10)==0) {
                 val elapsed = System.currentTimeMillis() - start
                 println("[$uid] i $i elapsed ${elapsed}ms")
             }
+
             val sleep = time + 1000 - System.currentTimeMillis()
             if (sleep > 0) {
                 delay(sleep)
@@ -170,17 +179,45 @@ class Robot constructor(var uid: Long): MqttListener {
                 println("[$uid] no time ...")
             }
         }
+
+        sendLiveStateMqtt(MessagingProto.GameLiveState.game_state_idle)
         stop()
+
         return this
     }
 
-    private fun sendLiveState() {
+    private fun sendLiveStateMqtt(state: MessagingProto.GameLiveState) {
         var msg = MessagingProto.GameLiveStateInfo.newBuilder()
-        msg.clientInfoBuilder.uid = uid
-        msg.clientInfoBuilder.gpsBuilder.latitude = lat
-        msg.clientInfoBuilder.gpsBuilder.longitude = lng
-        msg.state = MessagingProto.GameLiveState.game_state_ready
+        msg.state = state
+        msg.gameId = gameId
+        msg.timeMs = System.currentTimeMillis()
+        val c = msg.clientInfoBuilder
+        c.uid = uid
+        c.oem = "Kotlin"
+        c.token = token
+        c.deviceId = mqtt.clientId_
+        c.osVersion = "kt-${uid%1000}"
+        c.type = CommonProtos.ClientType.IOS
+        c.gpsBuilder.latitude = lat
+        c.gpsBuilder.longitude = lng
         mqtt.sendLiveMsg(msg.build(), MessagingProto.LiveMessageType.LMT_GAME_CONTACT_INFO_VALUE)
+    }
+
+    private fun sendLiveState(state: MessagingProto.GameLiveState) {
+        var msg = MessagingProto.GameLiveStateInfo.newBuilder()
+        msg.state = state
+        msg.gameId = gameId
+        msg.timeMs = System.currentTimeMillis()
+        val c = msg.clientInfoBuilder
+        c.uid = uid
+        c.oem = "Kotlin"
+        c.token = token
+        c.deviceId = mqtt.clientId_
+        c.osVersion = "kt-${uid%1000}"
+        c.type = CommonProtos.ClientType.IOS
+        c.gpsBuilder.latitude = lat
+        c.gpsBuilder.longitude = lng
+        Udp.sendMsg(msg.build(), MessagingProto.LiveMessageType.LMT_GAME_LIVE_STATE_VALUE)
     }
 
     private fun stop() {
