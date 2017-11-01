@@ -9,8 +9,9 @@ suspend fun workload(n: Int): Int {
 }
 
 fun run(size: Int) {
+  var base = 0
   var coList = MutableList(size, {
-      index -> async { Robot(8000000001L + index).run() }
+      index -> async { Robot(8000000001L + index + base).run() }
   })
 
   while (coList.size > 0) {
@@ -27,6 +28,6 @@ fun run(size: Int) {
 }
 
 fun main(args: Array<String>) {
-  val size = 2000
+  val size = 5000
   run(size)
 }

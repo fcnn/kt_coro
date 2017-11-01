@@ -121,27 +121,58 @@ class Robot constructor(var uid: Long): MqttListener {
         mqtt.sendLiveMsg(msg.build(), MessagingProto.LiveMessageType.LMT_SEARCH_NEARBY_USERS_VALUE)
     }
 
-    suspend fun init(): Int {
+    private suspend fun init(): Int {
         getInitParam()
-        login()
-        if (status != 0) {
-            return -1
+        do {
+            login()
+            if (status != 0) {
+                delay(1000)
+            }
+        } while (status != 0)
+
+        while (!mqtt.connected()) {
+            if (!mqtt.start()) {
+                delay(1000)
+                continue
+            }
+
+            for (i in 0..150) {
+                if (mqtt.connected())
+                    break
+                delay(200)
+            }
         }
 
-        if (!mqtt.start()) {
-            return -2
-        }
-
-        for (i in 0..150) {
-            if (mqtt.connected())
-                break
-            delay(200)
-        }
-
-        if (!mqtt.connected())
-            return -3
 
         return 0
+    }
+
+    suspend fun runMqtt(): Robot {
+        while(!mqtt.connected()) {
+            if (!mqtt.start()) {
+                delay(1000)
+                continue
+            }
+
+            for (i in 0..150) {
+                if (mqtt.connected())
+                    break
+                delay(200)
+            }
+        }
+
+        //val timeStamp = Timestamp(System.currentTimeMillis())
+       for (i in 0..3600) {
+           var msg = MessagingProto.ImChatMsg.newBuilder()
+           msg.toBuilder.uid = 8000000001 + (Math.random() * 5000).toLong()
+           msg.fromBuilder.uid = uid
+           msg.body = "hello, how are you!"
+           mqtt.sendImMsg(msg.build())
+           delay(1000)
+        }
+
+        stop()
+        return this
     }
 
     suspend fun run(): Robot {
@@ -150,6 +181,16 @@ class Robot constructor(var uid: Long): MqttListener {
             stop()
             return this
         }
+       for (i in 0..3600) {
+           var msg = MessagingProto.ImChatMsg.newBuilder()
+           msg.toBuilder.uid = 8000000001 + (Math.random() * 5000).toLong()
+           msg.fromBuilder.uid = uid
+           msg.body = "hello, how are you!"
+           mqtt.sendImMsg(msg.build())
+           delay(1000)
+        }
+        stop()
+        return this
         //val timeStamp = Timestamp(System.currentTimeMillis())
         var stateTime = 0L
         var nearbyTime = 0L

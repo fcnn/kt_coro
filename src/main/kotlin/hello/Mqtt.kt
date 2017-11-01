@@ -211,6 +211,28 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         return publish("im/sys", 1, payload)
     }
 
+    fun sendImMsg(msg: MessagingProto.ImChatMsg, id: Long = 0) {
+        var body = msg.toByteArray()
+        val payload = ByteArray(size = body.size + 10)
+        val type = MessagingProto.InstantMessageType.IM_CHAT_MESSAGE_VALUE
+        payload[0] = ((type shr 8) and 0xff).toByte()
+        payload[1] = (type and 0xff).toByte()
+        payload[2] = (id shr 56).toByte()
+        payload[3] = (id shr 48).toByte()
+        payload[4] = (id shr 40).toByte()
+        payload[5] = (id shr 32).toByte()
+        payload[6] = (id shr 24).toByte()
+        payload[7] = (id shr 16).toByte()
+        payload[8] = (id shr 8).toByte()
+        payload[9] = id.toByte()
+
+        (0 until body.size).forEach {
+            payload[it + 10] = body[it]
+        }
+
+        return publish("im/user/${msg.to.uid}", 1, payload)
+    }
+
     private fun subscribe(topic: String, qos: Int) {
         //println("subscribing to topic $topic qos $qos")
         client?.subscribe(topic, qos)
