@@ -28,6 +28,6 @@ fun run(size: Int, base: Int = 0) {
 
 fun main(args: Array<String>) {
   val base = 5000
-  val size = 1
+  val size = 10
   run(size, base)
 }

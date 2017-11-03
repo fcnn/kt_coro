@@ -260,7 +260,7 @@ class Robot constructor(var uid: Long): MqttListener {
         c.type = CommonProtos.ClientType.IOS
         c.gpsBuilder.latitude = lat
         c.gpsBuilder.longitude = lng
-        Udp.sendMsg(msg.build(), MessagingProto.LiveMessageType.LMT_GAME_LIVE_STATE_VALUE)
+        UdpNetty.sendMsg(msg.build(), MessagingProto.LiveMessageType.LMT_GAME_LIVE_STATE_VALUE)
     }
 
     private fun stop() {

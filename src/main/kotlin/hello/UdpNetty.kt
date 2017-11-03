@@ -5,37 +5,20 @@ import io.netty.buffer.Unpooled
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.DatagramPacket
 import io.netty.channel.socket.nio.NioDatagramChannel
-import io.netty.util.CharsetUtil
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import java.net.InetSocketAddress
 
 import com.google.protobuf.Message
-import io.netty.buffer.ByteBuf
 import io.netty.channel.Channel
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.runBlocking
 import protofiles.protojava.MessagingProto
 import protofiles.protojava.CommonProtos as CommonProto
 
-internal class UdpClientHandler : SimpleChannelInboundHandler<DatagramPacket>() {
-    @Throws(Exception::class)
-    public override fun messageReceived(channelHandlerContext: ChannelHandlerContext,
-                                        packet: DatagramPacket) {
-        val size = packet.content().array().size
+import kotlin.experimental.and
 
-        println("udp response size $size")
-        //channelHandlerContext.close()
-    }
-
-    @Throws(Exception::class)
-    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        ctx.close()
-        cause.printStackTrace()
-    }
-}
-
-class UdpNetty {
+object UdpNetty {
     private val channel_ : Channel
     private val group_ = NioEventLoopGroup()
     private val addr_ = InetSocketAddress("u.codein.net", 1000)
@@ -43,14 +26,58 @@ class UdpNetty {
         val b = Bootstrap()
         b.group(group_).channel(NioDatagramChannel::class.java)
                 //.option(ChannelOption.SO_BROADCAST,true)
-                .handler(UdpClientHandler())
+                //.handler(UdpClientHandler())
+                .handler(object: SimpleChannelInboundHandler<DatagramPacket>(){
+                    @Throws(Exception::class)
+                    public override fun messageReceived(channelHandlerContext: ChannelHandlerContext,
+                                                        packet: DatagramPacket) {
+                        var bbf = packet.content()
+                        var arr = ByteArray(bbf.writerIndex())
+                        bbf.readBytes(arr)
+                        //println("udp response size ${ba.size}")
+                        //channelHandlerContext.close()            val arr = msg.payload as ByteArray
+                        val type = (arr[0] and 0xff.toByte()).toInt() shl 8 or
+                                (arr[1] and 0xff.toByte()).toInt()
+                        val msgId = (arr[0] and 0xff.toByte()).toLong() shl 56 or
+                                ((arr[3] and 0xff.toByte()).toLong() shl 48) or
+                                ((arr[4] and 0xff.toByte()).toLong() shl 40) or
+                                ((arr[5] and 0xff.toByte()).toLong() shl 32) or
+                                ((arr[6] and 0xff.toByte()).toLong() shl 24) or
+                                ((arr[7] and 0xff.toByte()).toLong() shl 16) or
+                                ((arr[8] and 0xff.toByte()).toLong() shl 8) or
+                                (arr[9] and 0xff.toByte()).toLong()
+
+                        try {
+                            when (MessagingProto.LiveMessageType.forNumber(type)) {
+                                MessagingProto.LiveMessageType.LMT_SERVICE_RESPONSE -> {
+                                    var udpMsg = MessagingProto.ServiceResponse.parseFrom(arr.sliceArray(10 until arr.size))
+                                    //println("[UDP] response -> $udpMsg")
+                                }
+                                else -> {
+                                    println("[UDP] response -> unknown msg type $type")
+                                }
+                            }
+                        } catch (e: com.google.protobuf.InvalidProtocolBufferException) {
+                            e.printStackTrace()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    @Throws(Exception::class)
+                    override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
+                        ctx.close()
+                        cause.printStackTrace()
+                    }
+                })
 
         channel_ = b.bind(0).sync().channel()
     }
+
     fun close() {
         group_.shutdownGracefully()
         if (!channel_.closeFuture().await(100)) {
-            println("关闭超时！！！")
+            println("close timeout!")
         }
     }
     @Throws(Exception::class)
@@ -80,32 +107,31 @@ class UdpNetty {
         }
     }
 
-    companion object {
 
-        @Throws(Exception::class)
-        @JvmStatic
-        fun main(args: Array<String>) {
-            var b = MessagingProto.GameLiveStateInfo.newBuilder()
-            b.gameId = 1234L
-            b.state = MessagingProto.GameLiveState.game_state_ready
-            val c = b.clientInfoBuilder
-            c.uid = 8000000001L
-            c.version = 1000000300000L
-            c.type = CommonProto.ClientType.IOS
-            c.oem = "Kotlin"
-            c.gpsBuilder.longitude = 113.12345678
-            c.gpsBuilder.latitude = 22.87654321
-            c.deviceId = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
-            c.token = "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
+    @Throws(Exception::class)
+    @JvmStatic
+    fun main(args: Array<String>) {
+        var b = MessagingProto.GameLiveStateInfo.newBuilder()
+        b.gameId = 1234L
+        b.state = MessagingProto.GameLiveState.game_state_ready
+        val c = b.clientInfoBuilder
+        c.uid = 8000000001L
+        c.version = 1000000300000L
+        c.type = CommonProto.ClientType.IOS
+        c.oem = "Kotlin"
+        c.gpsBuilder.longitude = 113.12345678
+        c.gpsBuilder.latitude = 22.87654321
+        c.deviceId = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+        c.token = "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"
 
-            val msg = b.build()
-            val str = msg.toString()
-            println("msg -> $str")
+        val msg = b.build()
+        val str = msg.toString()
+        println("msg -> $str")
 
-            UdpNetty().sendMsg(msg, MessagingProto.LiveMessageType.LMT_GAME_LIVE_STATE_VALUE, 123L)
-            runBlocking {
-                delay(1000)
-            }
+        sendMsg(msg, MessagingProto.LiveMessageType.LMT_GAME_LIVE_STATE_VALUE, 123L)
+
+        runBlocking {
+            delay(1000)
         }
     }
 }
