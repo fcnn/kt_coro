@@ -35,6 +35,7 @@ class Mqtt constructor(var uid: Long, private var listener: MqttListener): MqttC
         for (topic in topics_) {
             subscribe(topic, qos_)
         }
+        println("[$uid] mqtt connected ...")
     }
 
     override fun connectionLost(cause: Throwable?) {

@@ -2,14 +2,13 @@ package hello
 
 import java.io.*
 import java.net.*
-import java.util.*
 import com.google.protobuf.Message
 import protofiles.protojava.CommonProtos as CommonProto
 import protofiles.protojava.MessagingProto
 
 object Udp {
-    private val port = 1000
-    private val host_ = "u.codein.net"
+    private val port_ = 1000
+    private val address_ = InetAddress.getByName("u.codein.net")
     private val socket_ = DatagramSocket()
 
     init {
@@ -18,7 +17,8 @@ object Udp {
     fun destroy() {
        socket_.close()
     }
-    fun sendMsg(msg: com.google.protobuf.Message, type: Int, id: Long = 0) {
+
+    fun sendMsg(msg: Message, type: Int, id: Long = 0) {
        var body = msg.toByteArray()
        val payload = ByteArray(size = body.size + 10)
        payload[0] = ((type shr 8) and 0xff).toByte()
@@ -35,8 +35,9 @@ object Udp {
        (0 until body.size).forEach {
            payload[it + 10] = body[it]
        }
-       val address = InetAddress.getByName(host_)
-       var packet = DatagramPacket(payload, payload.size, address, port)
+
+       var packet = DatagramPacket(payload, payload.size, address_, port_)
+       println("Udp send size: ${payload.size}")
        socket_.send(packet)
 
        // get response
@@ -45,7 +46,7 @@ object Udp {
 
        // display response
        //val received = String(packet.data, 0, packet.length)
-       //println("Quote of the Moment: " + received)
+       //println("Udp response size: ${packet.length}")
     }
 
     @Throws(IOException::class)

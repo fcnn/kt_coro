@@ -175,22 +175,24 @@ class Robot constructor(var uid: Long): MqttListener {
         return this
     }
 
-    suspend fun run(): Robot {
+    suspend fun run(mqttOnly: Boolean = false): Robot {
         status = init()
         if (status != 0) {
             stop()
             return this
         }
-       for (i in 0..3600) {
-           var msg = MessagingProto.ImChatMsg.newBuilder()
-           msg.toBuilder.uid = 8000000001 + (Math.random() * 5000).toLong()
-           msg.fromBuilder.uid = uid
-           msg.body = "hello, how are you!"
-           mqtt.sendImMsg(msg.build())
-           delay(1000)
+        if (mqttOnly) {
+            for (i in 0..3600) {
+                var msg = MessagingProto.ImChatMsg.newBuilder()
+                msg.toBuilder.uid = 8000000001 + (Math.random() * 5000).toLong()
+                msg.fromBuilder.uid = uid
+                msg.body = "hello, how are you!"
+                mqtt.sendImMsg(msg.build())
+                delay(1000)
+            }
+            stop()
+            return this
         }
-        stop()
-        return this
         //val timeStamp = Timestamp(System.currentTimeMillis())
         var stateTime = 0L
         var nearbyTime = 0L
